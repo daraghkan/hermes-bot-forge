@@ -1,7 +1,12 @@
 # Changelog
 
 All notable changes to this project are documented here.
-The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.html).
+
+## [Unreleased]
+
+### Added
+- **`skip_probe` setting** (`config.entries.bot-forge.settings.skip_probe`, default `false`). The post-create smoke-test chat probe runs `hermes chat -Q` against the new profile; a few providers — notably the OpenCode Go relay and any custom provider carrying `session_affinity_header` — need per-conversation affinity headers that the `-Q` single-query path does not inject, so the probe fails with a 400 and the half-built profile is rolled back even though the Bot itself would work. When `skip_probe` is on, the probe is bypassed, the Bot is created without a sample intro, and the result carries a `warning` field noting the probe was skipped. Reported by @daraghkan in catalog review (OpenCode Go / `minimax-m3` probe path).
 
 ## [0.22.0] - 2026-10-18
 
