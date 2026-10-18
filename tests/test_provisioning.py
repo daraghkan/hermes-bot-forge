@@ -431,6 +431,85 @@ class ForgeModelIntegration(unittest.TestCase):
         self.assertNotIn("each Bot is alive", out["note"])
 
 
+class SkipProbeSetting(unittest.TestCase):
+    """When the smoke-test probe would falsely fail (e.g. providers that need session-affinity
+    headers bot-forge's ``hermes chat -Q`` path doesn't inject), ``settings.skip_probe`` is the
+    escape hatch: keep the Bot, surface a warning, and never call ``bot_chat``."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        (self.root / "profiles" / "manager").mkdir(parents=True)
+        (self.root / "memories").mkdir()
+        self.default_model = {"default": "root-model", "provider": "root-provider"}
+        self.manager_model = {"default": "manager-model", "provider": "manager-provider", "api_mode": "responses"}
+        forge.dump_yaml(self.root / "config.yaml", {"model": self.default_model})
+        forge.dump_yaml(self.root / "profiles" / "manager" / "config.yaml", {"model": self.manager_model})
+        self.settings = {"workspace_survey": False, "ack_reactions": False, "ack_tapback": False,
+                         "journal_enabled": False, "suggest_connectors": False, "install_gateway": False}
+        self.at_inference = []
+        self.reply = (True, "Hello")
+        runner = patch.object(forge, "run", side_effect=self.fake_run)
+        self.run_mock = runner.start()
+        self.addCleanup(runner.stop)
+        chat = patch.object(forge, "bot_chat", side_effect=self.fake_chat)
+        self.chat_mock = chat.start()
+        self.addCleanup(chat.stop)
+        process = patch.object(forge.subprocess, "run", return_value=CompletedProcess([], 0, "", ""))
+        process.start()
+        self.addCleanup(process.stop)
+
+    def fake_run(self, root, *args, **kwargs):
+        if args[:2] == ("profile", "create"):
+            pdir = root / "profiles" / args[2]
+            pdir.mkdir()
+            forge.dump_yaml(pdir / "config.yaml", {"model": self.default_model})
+        elif args[:2] == ("profile", "delete"):
+            shutil.rmtree(root / "profiles" / args[-1])
+        else:
+            raise AssertionError(f"Unexpected real-work request: {args}")
+        return CompletedProcess([], 0, "", "")
+
+    def fake_chat(self, root, profile, message):
+        self.at_inference.append((profile, forge.load_yaml(root / "profiles" / profile / "config.yaml")["model"]))
+        return self.reply
+
+    def spec(self, **extra):
+        return {"hermes_root": str(self.root), "display_name": "Quill", "role": "Writer",
+                "settings": self.settings, "launch_profile": "manager", **extra}
+
+    def test_skip_probe_keeps_the_bot_when_chat_probe_would_fail(self):
+        # Simulate the OpenCode Go relay behaviour: the probe returns a non-AUTH error that
+        # would normally roll the half-built profile back. skip_probe must keep the Bot.
+        self.reply = (False, "400 invalid_params: MissingSessionID")
+        self.settings["skip_probe"] = True
+        out = forge.forge(self.spec())
+        self.assertTrue(out["ok"], out)
+        self.assertIn("skip_probe", out["warning"])
+        # bot_chat was bypassed entirely — the relay never had to be probed.
+        self.assertEqual(self.at_inference, [])
+
+    def test_skip_probe_off_still_runs_the_probe_and_rolls_back_on_failure(self):
+        # The same failure, with skip_probe off (the default), must still roll back. This
+        # guards the regression where the opt-out quietly becomes the default.
+        self.reply = (False, "400 invalid_params: MissingSessionID")
+        out = forge.forge(self.spec())
+        self.assertFalse(out["ok"])
+        self.assertIn("did not answer", out["error"])
+        self.assertEqual(self.at_inference, [("quill", self.manager_model)])
+        self.assertFalse((self.root / "profiles" / "quill").exists())
+
+    def test_skip_probe_with_successful_probe_still_succeeds(self):
+        # When the probe would have worked anyway, skip_probe must not change the outcome.
+        self.reply = (True, "Hi, I'm Quill.")
+        self.settings["skip_probe"] = True
+        out = forge.forge(self.spec())
+        self.assertTrue(out["ok"], out)
+        self.assertIn("skip_probe", out["warning"])
+        self.assertEqual(self.at_inference, [])
+
+
 @unittest.skipIf(os.name == "nt", "POSIX fake CLI fixture; Windows skip covered separately")
 class SubprocessConstruction(unittest.TestCase):
     """Real tool -> script -> CLI subprocesses, but the CLI is a local fixture, not Hermes."""

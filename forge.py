@@ -983,7 +983,18 @@ def forge(s: dict) -> dict:
         # 6. first words in its Bot Chat (doubles as the smoke test)
         model = (cfg.get("model") or {}).get("default", "?")
         warning = None
-        ok, reply = bot_chat(root, profile_id, KICKOFF)
+        # skip_probe: opt out of the smoke-test chat probe. The probe runs `hermes chat -Q`
+        # against the new profile, but a few providers (notably the OpenCode Go relay and any
+        # custom provider carrying ``session_affinity_header``) require per-conversation
+        # affinity headers that the -Q single-query path does not inject. On those providers
+        # the probe fails with a 400 (MissingSessionID) and the half-built profile is rolled
+        # back even though the Bot itself would work fine. When the operator turns
+        # skip_probe on, we skip the probe, keep the Bot, and surface a warning.
+        if settings.get("skip_probe"):
+            ok, reply = True, ""
+            warning = "smoke-test probe skipped (settings.skip_probe=true)"
+        else:
+            ok, reply = bot_chat(root, profile_id, KICKOFF)
         if not ok and any(k in reply.lower() for k in AUTH_ERRORS):
             fallback = settings["fallback_model"] or (local_model() if settings["probe_local_models"] else None)
             if fallback:
