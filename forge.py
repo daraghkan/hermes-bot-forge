@@ -983,7 +983,13 @@ def forge(s: dict) -> dict:
         # 6. first words in its Bot Chat (doubles as the smoke test)
         model = (cfg.get("model") or {}).get("default", "?")
         warning = None
-        ok, reply = bot_chat(root, profile_id, KICKOFF)
+        # skip_probe (operator-only): keep a Bot whose smoke test fails for a reason a later chat does not hit.
+        if settings.get("skip_probe"):
+            ok, reply = True, ""
+            warning = ("smoke-test probe skipped (settings.skip_probe=true): no intro, sign-in not checked, "
+                       "and its Bot Chat starts on first use")
+        else:
+            ok, reply = bot_chat(root, profile_id, KICKOFF)
         if not ok and any(k in reply.lower() for k in AUTH_ERRORS):
             fallback = settings["fallback_model"] or (local_model() if settings["probe_local_models"] else None)
             if fallback:

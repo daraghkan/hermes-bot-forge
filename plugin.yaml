@@ -48,6 +48,15 @@ config_schema:
     type: bool
     default: false
     description: If no fallback_model is set, look for a local OpenAI-compatible server (llama.cpp, Ollama, LM Studio) to fall back to.
+  skip_probe:
+    type: bool
+    default: false
+    description: >-
+      Do not send a new Bot its first message as a smoke test, and keep the Bot even though it
+      was not checked. Use only when the smoke test fails for a reason a later chat does not hit.
+      Skipping it also skips the intro, the sign-in check (so no switch to fallback_model and no
+      sign-in command), and creating the Bot Chat, which starts on the Bot's first chat or handoff.
+      Turn it off again once the Bot exists.
   allow_delete:
     type: bool
     default: false
