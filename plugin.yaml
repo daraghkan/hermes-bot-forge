@@ -52,13 +52,11 @@ config_schema:
     type: bool
     default: false
     description: >-
-      Skip the post-create smoke-test chat probe. The probe runs `hermes chat -Q` against the
-      new profile, but a few providers (notably the OpenCode Go relay and any custom provider
-      carrying `session_affinity_header`) require per-conversation affinity headers that the
-      `-Q` single-query path does not inject. On those providers the probe fails with a 400
-      and the half-built profile is rolled back even though the Bot itself would work. Turn
-      this on when you hit that class of error: the Bot is created without a sample intro
-      and the result carries a `warning` field noting the probe was skipped.
+      Do not send a new Bot its first message as a smoke test, and keep the Bot even though it
+      was not checked. Use only when the smoke test fails for a reason a later chat does not hit.
+      Skipping it also skips the intro, the sign-in check (so no switch to fallback_model and no
+      sign-in command), and creating the Bot Chat, which starts on the Bot's first chat or handoff.
+      Turn it off again once the Bot exists.
   allow_delete:
     type: bool
     default: false

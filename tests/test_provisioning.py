@@ -432,9 +432,8 @@ class ForgeModelIntegration(unittest.TestCase):
 
 
 class SkipProbeSetting(unittest.TestCase):
-    """When the smoke-test probe would falsely fail (e.g. providers that need session-affinity
-    headers bot-forge's ``hermes chat -Q`` path doesn't inject), ``settings.skip_probe`` is the
-    escape hatch: keep the Bot, surface a warning, and never call ``bot_chat``."""
+    """When the smoke-test probe fails for a reason a later chat does not hit, ``settings.skip_probe``
+    is the escape hatch: keep the Bot, surface a warning, and never call ``bot_chat``."""
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -480,8 +479,7 @@ class SkipProbeSetting(unittest.TestCase):
                 "settings": self.settings, "launch_profile": "manager", **extra}
 
     def test_skip_probe_keeps_the_bot_when_chat_probe_would_fail(self):
-        # Simulate the OpenCode Go relay behaviour: the probe returns a non-AUTH error that
-        # would normally roll the half-built profile back. skip_probe must keep the Bot.
+        # A non-AUTH probe failure would normally roll the half-built profile back. skip_probe must keep the Bot.
         self.reply = (False, "400 invalid_params: MissingSessionID")
         self.settings["skip_probe"] = True
         out = forge.forge(self.spec())

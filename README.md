@@ -207,6 +207,7 @@ plugins:
         inherit_model: true
         fallback_model: {}
         probe_local_models: false
+        skip_probe: false
         install_gateway: true
         journal_enabled: true
         suggest_connectors: true
@@ -218,6 +219,7 @@ plugins:
 | `inherit_model` | `true` | Inherit the calling profile's model unless an explicit creation route is supplied. |
 | `fallback_model` | `{}` | Model to switch a Bot to when its inherited model can't sign in, e.g. `{default: qwen3, provider: custom, base_url: http://127.0.0.1:8080/v1}`. |
 | `probe_local_models` | `false` | With no `fallback_model`, look for a local llama.cpp / Ollama / LM Studio server to fall back to. |
+| `skip_probe` | `false` | Keep a new Bot without sending it the first-message smoke test. Only for a Bot the smoke test blocks for a reason a later chat does not hit. It also skips the intro, the sign-in check (no `fallback_model` switch, no sign-in command) and creating the Bot Chat, which then starts on the Bot's first chat or handoff. Turn it off again afterwards. |
 | `install_gateway` | `true` | Verify live host serving and request a hot-rescan if needed. Install a dedicated service only for an explicitly standalone profile. Skipped on Windows. |
 | `journal_enabled` | `true` | Give new Bots a private, append-only work journal for outcomes, evidence and next steps. |
 | `allow_delete` | `false` | Let `delete_agent` work at all. Off by default — an agent should not be able to destroy a Bot on its own. |

@@ -1,12 +1,12 @@
 # Changelog
 
 All notable changes to this project are documented here.
-The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.html).
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
 ### Added
-- **`skip_probe` setting** (`config.entries.bot-forge.settings.skip_probe`, default `false`). The post-create smoke-test chat probe runs `hermes chat -Q` against the new profile; a few providers — notably the OpenCode Go relay and any custom provider carrying `session_affinity_header` — need per-conversation affinity headers that the `-Q` single-query path does not inject, so the probe fails with a 400 and the half-built profile is rolled back even though the Bot itself would work. When `skip_probe` is on, the probe is bypassed, the Bot is created without a sample intro, and the result carries a `warning` field noting the probe was skipped. Reported by @daraghkan in catalog review (OpenCode Go / `minimax-m3` probe path).
+- **`skip_probe` setting** (`plugins.entries.bot-forge.settings.skip_probe`, default `false`). After building a Bot, `create_agent` sends it a first message as a smoke test, and rolls the Bot back if that fails for any reason other than sign-in. The smoke test can fail for reasons a later chat with the same Bot does not hit, and the cause is not yet known. With `skip_probe` on, the smoke test is not sent and the Bot is kept, with a `warning` saying so. Skipping it also skips what it does: there is no intro, no check that the model can sign in (so no switch to `fallback_model` and no sign-in command), and no Bot Chat until the Bot's first chat or handoff. Turn it on only to create a Bot the smoke test blocks, then turn it off again.
 
 ## [0.22.0] - 2026-10-18
 
